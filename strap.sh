@@ -220,11 +220,9 @@ blackarch_setup()
   msg 'updating package databases'
   pacman_update
   reset_umask
-  msg 'installing blackarch-officials meta-package...'
-  pacman -S --noconfirm --needed blackarch-officials
+  #msg 'installing blackarch-officials meta-package...'
+  #pacman -S --noconfirm --needed blackarch-officials
   msg 'BlackArch Linux is ready!'
 }
 
 blackarch_setup
-
-
