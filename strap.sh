@@ -7,6 +7,9 @@ ARCH=$(uname -m)
 # mirror file to fetch and write
 MIRROR_F='blackarch-mirrorlist'
 
+TOOL='curl'
+TOOL_CONNECT_TIME='--connect-timeout 3'
+
 # simple error message wrapper
 err()
 {
@@ -61,23 +64,18 @@ reset_umask()
 
 check_internet()
 {
-  tool='curl'
-  tool_opts='-s --connect-timeout 8'
-
-  if ! $tool $tool_opts https://blackarch.org/ > /dev/null 2>&1; then
+  if ! $TOOL -s $TOOL_CONNECT_TIME://blackarch.org/ > /dev/null 2>&1; then
     err "You don't have an Internet connection!"
   fi
-
-  return $SUCCESS
 }
 
 # retrieve the BlackArch Linux keyring
 fetch_keyring()
 {
-  curl -s -O \
+  $TOOL -s -O \
   "https://www.blackarch.org/keyring/blackarch-keyring-$VERSION.tar.gz"
 
-  curl -s -O \
+  $TOOL -s -O \
   "https://www.blackarch.org/keyring/blackarch-keyring-$VERSION.tar.gz.sig"
 }
 
@@ -179,6 +177,21 @@ pacman_upgrade()
   esac
 }
 
+fetch_blackarch_repo() {
+  msg "fetching blackarch mirror list from official source..."
+  # Fetch and test mirrors from official list (fileless)
+  while IFS= read -r line || [ -n "$line" ]; do
+    if expr "$line" : "Server = .*" > /dev/null 2>&1; then
+      url="${line#Server = }"
+      if $TOOL -s $TOOL_CONNECT_TIME "$url" > /dev/null 2>&1; then
+        echo "$line" > /etc/pacman.d/$MIRROR_F
+        msg "using mirror: ${url#*://}"
+      else
+          err "no working blackarch mirrors found"
+      fi
+    fi
+  done < <($TOOL -s "https://blackarch.org/blackarch-mirrorlist")
+}
 
 # setup blackarch linux
 blackarch_setup()
@@ -192,7 +205,7 @@ blackarch_setup()
   check_priv
   set_umask
   make_tmp_dir
-  check_internet
+  #check_internet
   fetch_keyring
   #verify_keyring
   delete_signature
@@ -205,37 +218,6 @@ blackarch_setup()
   if ! grep -q "\[blackarch\]" /etc/pacman.conf; then
     msg 'configuring pacman'
     msg 'setting blackarch mirrorlist'
-     msg "fetching blackarch mirror list..."
-     fetch_blackarch_repo()
-     {
-       local mirror_list=(
-          "https://mirrors.hust.edu.cn/blackarch/\$repo/os/\$arch"
-          "https://mirror.sjtu.edu.cn/blackarch/\$repo/os/\$arch"
-          "https://mirrors.nju.edu.cn/blackarch/\$repo/os/\$arch"
-          "http://mirrors.nju.edu.cn/blackarch/\$repo/os/\$arch"
-          "https://mirrors.tuna.tsinghua.edu.cn/blackarch/\$repo/os/\$arch"
-          "https://mirrors.ustc.edu.cn/blackarch/\$repo/os/\$arch"
-          "http://mirrors.aliyun.com/blackarch/\$repo/os/\$arch"
-          "https://mirrors.aliyun.com/blackarch/\$repo/os/\$arch"
-          "http://mirrors.xjtu.edu.cn/blackarch/\$repo/os/\$arch"
-          "https://mirrors.xjtu.edu.cn/blackarch/\$repo/os/\$arch"
-          "https://mirrors.ocf.berkeley.edu/blackarch/\$repo/os/\$arch"
-          "https://mirror.yandex.ru/mirrors/blackarch/\$repo/os/\$arch"
-          "https://download.nus.edu.sg/mirror/blackarch/\$repo/os/\$arch"
-          "https://ftp.icm.edu.pl/pub/Linux/dist/blackarch/\$repo/os/\$arch"
-          "https://blackarch.cs.nycu.edu.tw/\$repo/os/\$arch"
-          "https://mirror.math.princeton.edu/pub/blackarch/\$repo/os/\$arch"
-          "https://ftp.kddilabs.jp/Linux/packages/blackarch/\$repo/os/\$arch"
-          "https://www.ftp.ne.jp/Linux/packages/blackarch/\$repo/os/\$arch")
-       for mirror in "${mirror_list[@]}"; do
-         if curl -s --connect-timeout 10 "$mirror" > /dev/null 2>&1; then
-           echo "Server = $mirror" > /etc/pacman.d/$MIRROR_F
-           msg "using mirror: ${mirror#*://}"
-           return 0
-         fi
-       done
-       err "failed to fetch blackarch mirror list"
-     }
     fetch_blackarch_repo
     msg 'updating pacman.conf'
     update_pacman_conf
@@ -255,5 +237,3 @@ blackarch_setup()
 }
 
 blackarch_setup
-
-
