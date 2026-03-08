@@ -1,19 +1,18 @@
 #!/bin/sh
 # strap.sh - setup BlackArch Linux keyring and install initial packages
 
+VERSION=20251011
 ARCH=$(uname -m)
 
 # mirror file to fetch and write
 MIRROR_F='blackarch-mirrorlist'
-GPG_CONF='/etc/pacman.d/gnupg/gpg.conf'
 
 # simple error message wrapper
 err()
 {
   echo >&2 "$(tput bold; tput setaf 1)[-] ERROR: ${*}$(tput sgr0)"
 
-  #exit 1337
-  exit 1
+  exit 1337
 }
 
 # simple warning message wrapper
@@ -72,26 +71,14 @@ check_internet()
   return $SUCCESS
 }
 
-# add necessary GPG options
-add_gpg_opts()
-{
-  # tmp fix for SHA-1 + >= gpg-2.4 versions
-  if ! grep -q 'allow-weak-key-signatures' $GPG_CONF
-  then
-    echo 'allow-weak-key-signatures' >> $GPG_CONF
-  fi
-
-  return $SUCCESS
-}
-
 # retrieve the BlackArch Linux keyring
 fetch_keyring()
 {
   curl -s -O \
-  'https://www.blackarch.org/keyring/blackarch-keyring.pkg.tar.zst'
+  "https://www.blackarch.org/keyring/blackarch-keyring-$VERSION.tar.gz"
 
   curl -s -O \
-  'https://www.blackarch.org/keyring/blackarch-keyring.pkg.tar.zst.sig'
+  "https://www.blackarch.org/keyring/blackarch-keyring-$VERSION.tar.gz.sig"
 }
 
 # verify the keyring signature
@@ -113,17 +100,18 @@ verify_keyring()
   fi
 
   if ! gpg --keyserver-options no-auto-key-retrieve \
-    --with-fingerprint blackarch-keyring.pkg.tar.zst.sig > /dev/null 2>&1
+    --with-fingerprint "blackarch-keyring-$VERSION.tar.gz.sig" \
+    > /dev/null 2>&1
   then
-    err "invalid keyring signature. please stop by https://matrix.to/#/#/BlackaArch:matrix.org"
+    err "invalid keyring signature. please stop by https://matrix.to/#/#BlackArch:matrix.org"
   fi
 }
 
 # delete the signature files
 delete_signature()
 {
-  if [ -f "blackarch-keyring.pkg.tar.zst.sig" ]; then
-    rm blackarch-keyring.pkg.tar.zst.sig
+  if [ -f "blackarch-keyring-$VERSION.tar.gz.sig" ]; then
+    rm "blackarch-keyring-$VERSION.tar.gz.sig"
   fi
 }
 
@@ -136,28 +124,26 @@ check_pacman_gnupg()
 # install the keyring
 install_keyring()
 {
-  if ! pacman --config /dev/null --noconfirm \
-    -U blackarch-keyring.pkg.tar.zst ; then
-      err 'keyring installation failed'
-  fi
+  tar xfz "blackarch-keyring-$VERSION.tar.gz" --strip-components=1 \
+    -C /usr/share/pacman/keyrings/
 
   # just in case
   pacman-key --populate
 }
 
 # ask user for mirror
-get_mirror()
-{
-  mirror_p="/etc/pacman.d"
-  mirror_r="https://blackarch.org"
+#get_mirror()
+#{
+#  mirror_p="/etc/pacman.d"
+#  mirror_r="https://blackarch.org"
 
-  msg "fetching new mirror list..."
-  if ! curl -s "$mirror_r/$MIRROR_F" -o "$mirror_p/$MIRROR_F" ; then
-    err "we couldn't fetch the mirror list from: $mirror_r/$MIRROR_F"
-  fi
+#  msg "fetching new mirror list..."
+#  if ! curl -s "$mirror_r/$MIRROR_F" -o "$mirror_p/$MIRROR_F" ; then
+#    err "we couldn't fetch the mirror list from: $mirror_r/$MIRROR_F"
+#  fi
 
-  msg "you can change the default mirror under $mirror_p/$MIRROR_F"
-}
+#  msg "you can change the default mirror under $mirror_p/$MIRROR_F"
+#}
 
 # update pacman.conf
 update_pacman_conf()
@@ -197,12 +183,16 @@ pacman_upgrade()
 # setup blackarch linux
 blackarch_setup()
 {
+  source /etc/os-release
+  if [ "$NAME" = "Manjaro Linux" ]; then
+    sudo pacman-mirrors -f3
+  fi
+
   msg 'installing blackarch keyring...'
   check_priv
   set_umask
   make_tmp_dir
   check_internet
-  add_gpg_opts
   fetch_keyring
   #verify_keyring
   delete_signature
@@ -214,16 +204,56 @@ blackarch_setup()
   # check if pacman.conf has already a mirror
   if ! grep -q "\[blackarch\]" /etc/pacman.conf; then
     msg 'configuring pacman'
-    get_mirror
+    msg 'setting blackarch mirrorlist'
+     msg "fetching blackarch mirror list..."
+     fetch_blackarch_repo()
+     {
+       local mirror_list=(
+          "https://mirrors.hust.edu.cn/blackarch/\$repo/os/\$arch"
+          "https://mirror.sjtu.edu.cn/blackarch/\$repo/os/\$arch"
+          "https://mirrors.nju.edu.cn/blackarch/\$repo/os/\$arch"
+          "http://mirrors.nju.edu.cn/blackarch/\$repo/os/\$arch"
+          "https://mirrors.tuna.tsinghua.edu.cn/blackarch/\$repo/os/\$arch"
+          "https://mirrors.ustc.edu.cn/blackarch/\$repo/os/\$arch"
+          "http://mirrors.aliyun.com/blackarch/\$repo/os/\$arch"
+          "https://mirrors.aliyun.com/blackarch/\$repo/os/\$arch"
+          "http://mirrors.xjtu.edu.cn/blackarch/\$repo/os/\$arch"
+          "https://mirrors.xjtu.edu.cn/blackarch/\$repo/os/\$arch"
+          "https://mirrors.ocf.berkeley.edu/blackarch/\$repo/os/\$arch"
+          "https://mirror.yandex.ru/mirrors/blackarch/\$repo/os/\$arch"
+          "https://download.nus.edu.sg/mirror/blackarch/\$repo/os/\$arch"
+          "https://ftp.icm.edu.pl/pub/Linux/dist/blackarch/\$repo/os/\$arch"
+          "https://blackarch.cs.nycu.edu.tw/\$repo/os/\$arch"
+          "https://mirror.math.princeton.edu/pub/blackarch/\$repo/os/\$arch"
+          "https://ftp.kddilabs.jp/Linux/packages/blackarch/\$repo/os/\$arch"
+          "https://www.ftp.ne.jp/Linux/packages/blackarch/\$repo/os/\$arch")
+       for mirror in "${mirror_list[@]}"; do
+         if curl -s --connect-timeout 10 "$mirror" > /dev/null 2>&1; then
+           echo "Server = $mirror" > /etc/pacman.d/$MIRROR_F
+           msg "using mirror: ${mirror#*://}"
+           return 0
+         fi
+       done
+       err "failed to fetch blackarch mirror list"
+     }
+    fetch_blackarch_repo
     msg 'updating pacman.conf'
     update_pacman_conf
   fi
   msg 'updating package databases'
   pacman_update
   reset_umask
-  #msg 'installing blackarch-officials meta-package...'
-  #pacman -S --noconfirm --needed blackarch-officials
-  msg 'BlackArch Linux is ready!'
+  msg 'installing blackarch-mirrorlist package'
+  #pacman -S --noconfirm blackarch-mirrorlist
+  if [ -f /etc/pacman.d/blackarch-mirrorlist.pacnew ]; then
+    mv /etc/pacman.d/blackarch-mirrorlist.pacnew \
+      /etc/pacman.d/blackarch-mirrorlist
+  fi
+  msg 'BlackArch repository is ready!'
+  msg 'You can install `blackarch-officials` metapackage with the most popular tools using the command below:'
+  msg 'sudo pacman -S --needed blackarch-officials'
 }
 
 blackarch_setup
+
+
