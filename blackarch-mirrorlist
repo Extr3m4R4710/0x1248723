@@ -47,7 +47,7 @@
 #Server = http://de.mirrors.cicku.me/blackarch/$repo/os/$arch
 #Server = https://de.mirrors.cicku.me/blackarch/$repo/os/$arch
 #Server = http://ftp.halifax.rwth-aachen.de/blackarch/$repo/os/$arch
-Server = https://ftp.halifax.rwth-aachen.de/blackarch/$repo/os/$arch
+#Server = https://ftp.halifax.rwth-aachen.de/blackarch/$repo/os/$arch
 #Server = ftp://ftp.halifax.rwth-aachen.de/blackarch/$repo/os/$arch
 #Server = http://blackarch.unixpeople.org/$repo/os/$arch
 #Server = https://blackarch.unixpeople.org/$repo/os/$arch
@@ -125,7 +125,7 @@ Server = https://mirror.yandex.ru/mirrors/blackarch/$repo/os/$arch
 #Server = http://sg.mirrors.cicku.me/blackarch/$repo/os/$arch
 #Server = https://sg.mirrors.cicku.me/blackarch/$repo/os/$arch
 #Server = http://download.nus.edu.sg/mirror/blackarch/$repo/os/$arch
-#Server = https://download.nus.edu.sg/mirror/blackarch/$repo/os/$arch
+Server = https://download.nus.edu.sg/mirror/blackarch/$repo/os/$arch
 
 # Sweden |
 #Server = http://mirror.zetup.net/blackarch/$repo/os/$arch
