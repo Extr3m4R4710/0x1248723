@@ -211,7 +211,7 @@ blackarch_setup()
   #if [ -f /etc/pacman.d/blackarch-mirrorlist.pacnew ]; then
   #  mv /etc/pacman.d/blackarch-mirrorlist.pacnew \
   #    /etc/pacman.d/blackarch-mirrorlist
-  fi
+  #fi
   msg 'BlackArch repository is ready!'
   msg 'You can install `blackarch-officials` metapackage with the most popular tools using the command below:'
   msg 'sudo pacman -S --needed blackarch-officials'
